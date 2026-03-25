@@ -9,16 +9,23 @@ pub fn build(b: *std.Build) void {
       .root_source_file = b.path("src/main.zig"),
       .target = target,
       .optimize = .ReleaseSmall,
-      //.strip = true,
+      .strip = false,
     }),
   });
-
+  
   const pspsdk_dep = b.dependency("pspsdk", .{});
   const pspsdk_mod = pspsdk_dep.module("pspsdk");
   exe.root_module.addImport("pspsdk", pspsdk_mod);
+  
+  exe.setLinkerScript(b.path("src/linkfile.ld"));
   exe.entry = .{ .symbol_name = "module_start" };
-
-  const exports = [2]*std.Build.Step.Run{
+  exe.root_module.unwind_tables = .none;
+  
+  exe.root_module.pic = false;
+  exe.link_eh_frame_hdr = false;
+  exe.link_emit_relocs = true;
+  
+  const commands = [4]*std.Build.Step.Run{
     b.addSystemCommand(&.{
       "sh", "-c",
       std.fmt.allocPrint(b.allocator, "psp-build-exports -b {s} > {s}", .{
@@ -27,14 +34,31 @@ pub fn build(b: *std.Build) void {
       }) catch |err| @panic(@errorName(err)),
     }),
     b.addSystemCommand(&.{
+        "python3",
+        b.pathFromRoot("gen-linkfile.py"),
+        pspsdk_dep.path("tools/linkfile.ld").getPath(b),
+        b.pathFromRoot("src/linkfile.ld"),
+    }),    
+    b.addSystemCommand(&.{
       "psp-build-exports",
       "-s",
       b.pathFromRoot("src/exports.exp"),
     }),
+    b.addSystemCommand(&.{
+      "python3",
+      b.pathFromRoot("gen-kcall-zig.py"),
+      b.pathFromRoot("src/kcall.zig"),
+      b.pathFromRoot("kcall.S"),
+      b.pathFromRoot("kcall.zig"),
+    })
   };
-  exe.step.dependOn(&exports[0].step);
-  exe.step.dependOn(&exports[1].step);
+  
+  for (commands) |cmd| exe.step.dependOn(&cmd.step);
 
+  //const fixup = b.addSystemCommand(&.{ "psp-fixup-imports" });
+  //fixup.addArtifactArg(exe);
+  //fixup.step.dependOn(&exe.step);
+    
   const pspdev = b.graph.environ_map.get("PSPDEV") orelse @panic("PSPDEV not set");
   const inc = std.fs.path.join(
     b.allocator, &.{ pspdev, "psp/sdk/include" }
@@ -45,6 +69,14 @@ pub fn build(b: *std.Build) void {
     .flags = &.{ "-G0", "-Os", "-I", inc, "-I", "" },
   });
   
+  const prxgen = pspsdk_dep.artifact("zPRXGen");
+  const run = b.addRunArtifact(prxgen);
+  run.addArtifactArg(exe);
+  
+  const prx_file = run.addOutputFileArg("kcall.prx");
+  const install_prx = b.addInstallBinFile(prx_file, "kcall.prx");
+  b.getInstallStep().dependOn(&install_prx.step);
+    
   b.installArtifact(exe);
 }
 

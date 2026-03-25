@@ -2,4 +2,4 @@
 zig-out/
 /exports.c
 /kcall.S
-
+/src/linkfile.ld

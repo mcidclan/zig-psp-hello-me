@@ -12,13 +12,28 @@ pub fn build(b: *std.Build) void {
     }),
   });
   
+  const commands = [1]*std.Build.Step.Run{
+    b.addSystemCommand(&.{
+      "cp",
+      b.pathFromRoot("../kcall/kcall.zig"),
+      b.pathFromRoot("src/kcall.zig"),
+    }),
+  };
+  exe.step.dependOn(&commands[0].step);
+  
   const pspsdk_dep = b.dependency("pspsdk", .{});
   const pspsdk_mod = pspsdk_dep.module("pspsdk");
+  
+  const kcall_mod = b.createModule(.{
+    .root_source_file = b.path("src/kcall.zig"),
+  });
+  
+  exe.root_module.addImport("kcall", kcall_mod);
   exe.root_module.addImport("pspsdk", pspsdk_mod);
   
   exe.setLinkerScript(pspsdk_dep.path("tools/linkfile.ld"));
   exe.entry = .{ .symbol_name = "module_start" };
-  exe.link_eh_frame_hdr = false;
+  exe.link_eh_frame_hdr = true;
   exe.link_emit_relocs = true;
     
   const prxgen = pspsdk_dep.artifact("zPRXGen");
@@ -26,9 +41,14 @@ pub fn build(b: *std.Build) void {
   prx.addArtifactArg(exe);
   
   const prx_file = prx.addOutputFileArg("app.prx");
-  const install_prx = b.addInstallBinFile(prx_file, "bin/app.prx");
-
+  const install_prx = b.addInstallBinFile(prx_file, "app.prx");
   b.getInstallStep().dependOn(&install_prx.step);
+  
+  const install_kcall = b.addInstallBinFile(
+    b.path("../kcall/zig-out/bin/kcall.prx"),
+    "kcall.prx",
+  );
+  b.getInstallStep().dependOn(&install_kcall.step);
 }
 
 fn getTarget(b: *std.Build) std.Build.ResolvedTarget {
