@@ -1,0 +1,17 @@
+
+.{
+  .name = .hello_from_me,
+  .version = "0.0.0",
+  .fingerprint = 0x8375e8502a099e94,
+  .minimum_zig_version = "0.16.0",
+  .dependencies = .{
+    .pspsdk = .{
+      .path = "../Zig-PSP/",
+    },
+  },
+  .paths = .{
+    "build.zig",
+    "build.zig.zon",
+    "src",
+  },
+}

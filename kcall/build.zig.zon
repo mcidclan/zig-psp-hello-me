@@ -1,0 +1,16 @@
+.{
+  .name = .kcall,
+  .version = "0.0.0",
+  .fingerprint = 0xc50a416327946bf3,
+  .minimum_zig_version = "0.16.0",
+  .dependencies = .{
+    .pspsdk = .{
+      .path = "../Zig-PSP/",
+    },
+  },
+  .paths = .{
+    "build.zig",
+    "build.zig.zon",
+    "src",
+  },
+}
