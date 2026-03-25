@@ -14,8 +14,8 @@ pub fn build(b: *std.Build) void {
   
   const pspsdk_dep = b.dependency("pspsdk", .{});
   const pspsdk_mod = pspsdk_dep.module("pspsdk");
-  
   exe.root_module.addImport("pspsdk", pspsdk_mod);
+  
   exe.setLinkerScript(pspsdk_dep.path("tools/linkfile.ld"));
   exe.entry = .{ .symbol_name = "module_start" };
   exe.link_eh_frame_hdr = false;
