@@ -1,3 +1,4 @@
 [submodule "Zig-PSP"]
 	path = Zig-PSP
 	url = https://github.com/mcidclan/Zig-PSP
+	branch = exp-zig

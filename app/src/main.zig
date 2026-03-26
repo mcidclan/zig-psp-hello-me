@@ -1,20 +1,22 @@
 const sdk = @import("pspsdk");
 const kcall = @import("kcall");
 const utils = @import("./utils.zig");
+const melib = @import("./melib.zig");
 const debug = utils.debug;
 
 comptime {
   asm (sdk.extra.module.module_info("hello-me", .{ .mode = .User }, 1, 1));
 }
 
-fn testKernel() callconv(.c) c_int {
-  while(true){
-    _ = sdk.sceKernelDelayThread(1000);
-  }
-  //debug.psp.print("Hello From Kernel!\n");
+var mePoc: u32 = 0;
+fn meProcess() c_int {
   
-  return 0;
+  mePoc = 0x12345678;
+  // todo:
+  return 1;
 }
+
+// const BASE_SHARED_MEM: u32 = 0x48400000;
 
 pub fn main() void {
   debug.psp.screenInit();
@@ -22,13 +24,24 @@ pub fn main() void {
   const mod = utils.pspSdkLoadStartModule("host0:/kcall.prx", 1);
   if (mod < 0) {
     debug.printf("Can't load prx, mod: {x}!", .{mod});
-    _ = sdk.sceKernelDelayThread(5000000);
+    _ = sdk.sceKernelDelayThread(2000000);
     sdk.sceKernelExitGame();
   }
   
+  //_ = sdk.sceDisplaySetFrameBuf(
+  //  @ptrFromInt(BASE_SHARED_MEM),
+  //  512,
+  //  .Format8888,
+  //  .NextVSync,
+  //);
+  
   debug.psp.print("Hello From User!\n");
-  kcall.kcall(&testKernel);
+  melib.meProcess = &meProcess;
+  kcall.kcall(&melib.init);
+  
+  _ = sdk.sceKernelDelayThread(1000);
+  debug.printf("meCount: {x}\n", .{mePoc});
 
-  _ = sdk.sceKernelDelayThread(5000000);
+  _ = sdk.sceKernelDelayThread(3000000);
   sdk.sceKernelExitGame();
 }

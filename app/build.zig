@@ -11,19 +11,30 @@ pub fn build(b: *std.Build) void {
       .optimize = .ReleaseSafe, // .Debug,
     }),
   });
+
+  const pspsdk_dep = b.dependency("pspsdk", .{});
+  const pspsdk_mod = pspsdk_dep.module("pspsdk");
   
-  const commands = [1]*std.Build.Step.Run{
+  const commands = [2]*std.Build.Step.Run{
+    b.addSystemCommand(&.{
+      "python3",
+      b.pathFromRoot("gen-linkfile.py"),
+      pspsdk_dep.path("tools/linkfile.ld").getPath(b),
+      b.pathFromRoot("src/linkfile.ld"),
+    }),
+    
     b.addSystemCommand(&.{
       "cp",
       b.pathFromRoot("../kcall/kcall.zig"),
       b.pathFromRoot("src/kcall.zig"),
     }),
   };
-  exe.step.dependOn(&commands[0].step);
   
-  const pspsdk_dep = b.dependency("pspsdk", .{});
-  const pspsdk_mod = pspsdk_dep.module("pspsdk");
-  
+  for (1..commands.len) |i| {
+    commands[i].step.dependOn(&commands[i - 1].step);
+  }
+  for (commands) |cmd| exe.step.dependOn(&cmd.step);
+
   const kcall_mod = b.createModule(.{
     .root_source_file = b.path("src/kcall.zig"),
   });
@@ -31,7 +42,7 @@ pub fn build(b: *std.Build) void {
   exe.root_module.addImport("kcall", kcall_mod);
   exe.root_module.addImport("pspsdk", pspsdk_mod);
   
-  exe.setLinkerScript(pspsdk_dep.path("tools/linkfile.ld"));
+  exe.setLinkerScript(b.path("src/linkfile.ld"));
   exe.entry = .{ .symbol_name = "module_start" };
   exe.link_eh_frame_hdr = true;
   exe.link_emit_relocs = true;

@@ -53,7 +53,10 @@ pub fn build(b: *std.Build) void {
     })
   };
   
-  for (commands) |cmd| exe.step.dependOn(&cmd.step);
+  for (1..commands.len) |i| {
+    commands[i].step.dependOn(&commands[i - 1].step);
+  }
+  exe.step.dependOn(&commands[commands.len - 1].step);
 
   //const fixup = b.addSystemCommand(&.{ "psp-fixup-imports" });
   //fixup.addArtifactArg(exe);
